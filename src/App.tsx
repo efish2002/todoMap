@@ -6,6 +6,7 @@ import { Sidebar } from "./components/Sidebar";
 import { OnboardingDialog } from "./components/OnboardingDialog";
 import { TodoDialog } from "./components/TodoDialog";
 import { ProjectDialog } from "./components/ProjectDialog";
+import { EditPersonDialog } from "./components/EditPersonDialog";
 import { EmptyState } from "./components/EmptyState";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
   const [showNewTodo, setShowNewTodo] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [showNewProject, setShowNewProject] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -94,6 +96,7 @@ export default function App() {
               selectedId={selectedPersonId}
               onSelectNode={setSelectedPersonId}
               onSelectEdge={(id) => { const t = todos.find((x) => x.id === id); if (t) setEditingTodo(t); }}
+              onEditPerson={(id) => { const p = people.find((x) => x.id === id); if (p) setEditingPerson(p); }}
             />
           )}
         </main>
@@ -111,6 +114,7 @@ export default function App() {
               console.error("toggle done failed", e);
             }
           }}
+          onEditPerson={(p) => setEditingPerson(p)}
         />
       </div>
 
@@ -160,6 +164,13 @@ export default function App() {
           editing={null}
           onClose={() => setShowNewProject(false)}
           onSaved={async () => { setShowNewProject(false); await refresh(); }}
+        />
+      )}
+      {editingPerson && (
+        <EditPersonDialog
+          person={editingPerson}
+          onClose={() => setEditingPerson(null)}
+          onSaved={async () => { setEditingPerson(null); await refresh(); }}
         />
       )}
     </div>

@@ -2,6 +2,8 @@ export interface Person {
   id: number;
   name: string;
   avatar_path: string | null;
+  organization: string | null;
+  contact: string | null;
   is_me: boolean;
   created_at: string;
 }

@@ -12,6 +12,20 @@ export const api = {
   listPeople: () => invoke<Person[]>("list_people"),
   upsertPerson: (name: string, avatar_path: string | null) =>
     invoke<Person>("upsert_person", { name, avatarPath: avatar_path }),
+  updatePerson: (input: {
+    id: number;
+    name?: string;
+    avatar_path?: string | null;
+    organization?: string | null;
+    contact?: string | null;
+  }) =>
+    invoke<Person>("update_person", {
+      id: input.id,
+      name: input.name,
+      avatarPath: input.avatar_path,
+      organization: input.organization,
+      contact: input.contact,
+    }),
 
   // projects
   listProjects: (include_archived: boolean) =>

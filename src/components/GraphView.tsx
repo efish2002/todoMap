@@ -13,10 +13,11 @@ interface Props {
   selectedId: number | null;
   onSelectNode: (personId: number | null) => void;
   onSelectEdge: (todoId: number) => void;
+  onEditPerson: (personId: number) => void;
 }
 
 export function GraphView(props: Props) {
-  const { me, people, projects, todos, selectedId, onSelectNode, onSelectEdge } = props;
+  const { me, people, projects, todos, selectedId, onSelectNode, onSelectEdge, onEditPerson } = props;
   const [menu, setMenu] = useState<{ kind: "node" | "edge"; x: number; y: number; id: number } | null>(null);
   // User-dragged positions override the auto layout. Persists for the session.
   const [userPositions, setUserPositions] = useState<Map<number, Point>>(new Map());
@@ -147,6 +148,7 @@ export function GraphView(props: Props) {
         elementsSelectable
         onNodeDragStop={onNodeDragStop}
         onNodeClick={(_, n) => { setMenu(null); onSelectNode(Number(n.id)); }}
+        onNodeDoubleClick={(_, n) => { setMenu(null); onEditPerson(Number(n.id)); }}
         onEdgeClick={(_, e) => { setMenu(null); onSelectEdge(Number(e.id)); }}
         onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ kind: "node", x: e.clientX, y: e.clientY, id: Number(n.id) }); }}
         onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ kind: "edge", x: e.clientX, y: e.clientY, id: Number(ed.id) }); }}

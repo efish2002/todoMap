@@ -108,7 +108,11 @@ button.ghost:hover { color: #fff; border-color: #4a5260; }
 }
 .avatar-me { background: #e8c547; color: #1a1f2e; }
 .name { font-size: 13px; font-weight: 600; color: #e6e9f0; }
+.name.editable { cursor: text; }
+.name.editable:hover { text-decoration: underline dotted #4a5260; text-underline-offset: 3px; }
 .meta { color: #6a7180; font-size: 11px; margin-top: 1px; }
+.person-meta { font-size: 10px; color: #aab0c0; margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+.person-meta .dot { color: #4a5260; }
 
 .sidebar h4 {
   color: #6a7180;
