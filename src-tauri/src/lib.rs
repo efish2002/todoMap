@@ -4,6 +4,7 @@ pub mod error;
 pub mod models;
 pub mod state;
 
+use commands::ipc;
 use state::AppState;
 use tauri::Manager;
 
@@ -16,7 +17,24 @@ pub fn run() {
             app.manage(st);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            ipc::get_or_create_me,
+            ipc::set_my_avatar,
+            ipc::list_people,
+            ipc::upsert_person,
+            ipc::list_projects,
+            ipc::create_project,
+            ipc::update_project,
+            ipc::list_todos,
+            ipc::list_todos_for_person,
+            ipc::create_todo,
+            ipc::update_todo,
+            ipc::set_todo_status,
+            ipc::delete_todo,
+            ipc::add_comment,
+            ipc::list_comments,
+            ipc::delete_comment,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running todoMap");
 }
