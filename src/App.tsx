@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isTauri as _isTauri } from "@tauri-apps/api/core";
 import { api } from "./api";
 import type { Person, Project, Todo } from "./types";
 import { GraphView } from "./components/GraphView";
@@ -10,8 +11,7 @@ import { EditPersonDialog } from "./components/EditPersonDialog";
 import { EmptyState } from "./components/EmptyState";
 import { previewMe, previewPeople, previewProjects, previewTodos } from "./previewData";
 
-declare global { interface Window { __TAURI__?: unknown } }
-const isTauri = typeof window !== "undefined" && !!window.__TAURI__;
+const isTauri = typeof window !== "undefined" && _isTauri();
 
 export default function App() {
   const [me, setMe] = useState<Person | null>(null);

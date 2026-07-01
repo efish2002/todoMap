@@ -1,17 +1,26 @@
-import { invoke } from "@tauri-apps/api/core";
+import { isTauri, invoke } from "@tauri-apps/api/core";
+
+function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (typeof window === "undefined" || !isTauri()) {
+    return Promise.reject(
+      new Error("预览模式不能保存，请在 Tauri 桌面应用中操作（" + cmd + "）")
+    );
+  }
+  return invoke<T>(cmd, args);
+}
 import type { Comment, Person, Project, Todo, TodoStatus } from "./types";
 
 export const api = {
   // me
   getOrCreateMe: (name: string, avatar_path: string | null) =>
-    invoke<Person>("get_or_create_me", { name, avatarPath: avatar_path }),
+    call<Person>("get_or_create_me", { name, avatarPath: avatar_path }),
   setMyAvatar: (avatar_path: string | null) =>
-    invoke<void>("set_my_avatar", { avatarPath: avatar_path }),
+    call<void>("set_my_avatar", { avatarPath: avatar_path }),
 
   // people
-  listPeople: () => invoke<Person[]>("list_people"),
+  listPeople: () => call<Person[]>("list_people"),
   upsertPerson: (name: string, avatar_path: string | null) =>
-    invoke<Person>("upsert_person", { name, avatarPath: avatar_path }),
+    call<Person>("upsert_person", { name, avatarPath: avatar_path }),
   updatePerson: (input: {
     id: number;
     name?: string;
@@ -19,7 +28,7 @@ export const api = {
     organization?: string | null;
     contact?: string | null;
   }) =>
-    invoke<Person>("update_person", {
+    call<Person>("update_person", {
       id: input.id,
       name: input.name,
       avatarPath: input.avatar_path,
@@ -29,20 +38,20 @@ export const api = {
 
   // projects
   listProjects: (include_archived: boolean) =>
-    invoke<Project[]>("list_projects", { includeArchived: include_archived }),
+    call<Project[]>("list_projects", { includeArchived: include_archived }),
   createProject: (name: string, color: string) =>
-    invoke<Project>("create_project", { name, color }),
+    call<Project>("create_project", { name, color }),
   updateProject: (
     id: number,
     name: string | null,
     color: string | null,
     archived: boolean | null,
-  ) => invoke<Project>("update_project", { id, name, color, archived }),
+  ) => call<Project>("update_project", { id, name, color, archived }),
 
   // todos
-  listTodos: () => invoke<Todo[]>("list_todos"),
+  listTodos: () => call<Todo[]>("list_todos"),
   listTodosForPerson: (person_id: number) =>
-    invoke<Todo[]>("list_todos_for_person", { personId: person_id }),
+    call<Todo[]>("list_todos_for_person", { personId: person_id }),
   createTodo: (input: {
     title: string;
     description: string | null;
@@ -53,7 +62,7 @@ export const api = {
     from_person_id: number;
     to_person_id: number;
   }) =>
-    invoke<Todo>("create_todo", {
+    call<Todo>("create_todo", {
       title: input.title,
       description: input.description,
       priority: input.priority,
@@ -73,7 +82,7 @@ export const api = {
     from_person_id?: number;
     to_person_id?: number;
   }) =>
-    invoke<Todo>("update_todo", {
+    call<Todo>("update_todo", {
       id: input.id,
       title: input.title,
       description: input.description,
@@ -84,17 +93,17 @@ export const api = {
       toPersonId: input.to_person_id,
     }),
   setTodoStatus: (id: number, status: TodoStatus) =>
-    invoke<Todo>("set_todo_status", { id, status }),
-  deleteTodo: (id: number) => invoke<void>("delete_todo", { id }),
+    call<Todo>("set_todo_status", { id, status }),
+  deleteTodo: (id: number) => call<void>("delete_todo", { id }),
 
   // comments
   addComment: (todo_id: number, author_id: number, body: string) =>
-    invoke<Comment>("add_comment", { todoId: todo_id, authorId: author_id, body }),
+    call<Comment>("add_comment", { todoId: todo_id, authorId: author_id, body }),
   listComments: (todo_id: number) =>
-    invoke<Comment[]>("list_comments", { todoId: todo_id }),
-  deleteComment: (id: number) => invoke<void>("delete_comment", { id }),
+    call<Comment[]>("list_comments", { todoId: todo_id }),
+  deleteComment: (id: number) => call<void>("delete_comment", { id }),
 
-  exportJson: () => invoke<string>("export_json"),
+  exportJson: () => call<string>("export_json"),
   importJson: (json: string, merge: boolean) =>
-    invoke<void>("import_json", { json, merge }),
+    call<void>("import_json", { json, merge }),
 };
