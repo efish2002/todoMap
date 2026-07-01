@@ -79,4 +79,8 @@ export const api = {
   listComments: (todo_id: number) =>
     invoke<Comment[]>("list_comments", { todoId: todo_id }),
   deleteComment: (id: number) => invoke<void>("delete_comment", { id }),
+
+  exportJson: () => invoke<string>("export_json"),
+  importJson: (json: string, merge: boolean) =>
+    invoke<void>("import_json", { json, merge }),
 };

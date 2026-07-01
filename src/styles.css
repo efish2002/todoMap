@@ -1,3 +1,267 @@
 html, body, #root { height: 100%; margin: 0; }
-body { background: #0f1320; color: #eee; font-family: system-ui, sans-serif; }
-.app { padding: 16px; }
+body {
+  background: #0f1320;
+  color: #e6e9f0;
+  font-family: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+* { box-sizing: border-box; }
+
+.app {
+  display: grid;
+  grid-template-rows: 44px 1fr 28px;
+  height: 100%;
+  background: #0f1320;
+}
+
+.app-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: #888;
+}
+
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  background: #0a0e1a;
+  border-bottom: 1px solid #1a1f2e;
+}
+.brand { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
+.brand-mark { color: #e8c547; font-size: 14px; }
+.brand-name { font-weight: 700; font-size: 14px; letter-spacing: 0.2px; }
+.topbar-btn {
+  background: transparent;
+  color: #c4cad8;
+  border: 1px solid #2a3140;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.topbar-btn:hover { background: #1a1f2e; color: #fff; }
+.topbar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.search {
+  flex: 1;
+  max-width: 320px;
+  background: #0f1320;
+  border: 1px solid #2a3140;
+  color: #e6e9f0;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.search:focus { outline: none; border-color: #5b8def; }
+button.primary {
+  background: #e8c547;
+  color: #1a1f2e;
+  border: 1px solid #e8c547;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+}
+button.primary:hover { background: #f0d370; border-color: #f0d370; }
+button.primary:disabled { background: #4a4020; color: #8a7c50; border-color: #4a4020; cursor: not-allowed; }
+button.ghost {
+  background: transparent;
+  color: #aab0c0;
+  border: 1px solid #2a3140;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+button.ghost:hover { color: #fff; border-color: #4a5260; }
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  height: 100%;
+  overflow: hidden;
+}
+.graph { background: #0f1320; position: relative; height: 100%; overflow: hidden; }
+
+.sidebar {
+  background: #0a0e1a;
+  border-left: 1px solid #1a1f2e;
+  padding: 12px;
+  overflow-y: auto;
+}
+.person-card {
+  display: flex; gap: 10px; align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #1a1f2e;
+  margin-bottom: 12px;
+}
+.avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #2a3140;
+  display: flex; align-items: center; justify-content: center;
+  color: #c4cad8; font-weight: 600; font-size: 14px;
+}
+.avatar-me { background: #e8c547; color: #1a1f2e; }
+.name { font-size: 13px; font-weight: 600; color: #e6e9f0; }
+.meta { color: #6a7180; font-size: 11px; margin-top: 1px; }
+
+.sidebar h4 {
+  color: #6a7180;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+.todo-card {
+  background: #0f1320;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #2a3140;
+  margin-bottom: 4px;
+  cursor: pointer;
+  border: 1px solid #1a1f2e;
+  border-left-width: 3px;
+}
+.todo-card:hover { background: #141a2a; }
+.todo-card .title { font-size: 12px; color: #e6e9f0; line-height: 1.4; }
+.todo-card .meta { font-size: 10px; color: #6a7180; margin-top: 3px; }
+.todo-card.status-done { border-left-color: #3aa856; opacity: 0.6; }
+.todo-card.status-done .title { text-decoration: line-through; }
+.todo-card.status-in_progress { border-left-color: #5b8def; }
+.todo-card.status-blocked { border-left-color: #e85a5a; }
+.todo-card.status-pending { border-left-color: #d97b3a; }
+.empty { color: #4a5260; font-size: 11px; padding: 4px 0; }
+
+.statusbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px;
+  background: #0a0e1a;
+  border-top: 1px solid #1a1f2e;
+  font-size: 11px;
+  color: #6a7180;
+}
+.stat { color: #aab0c0; }
+.stat-sep { color: #2a3140; }
+.grow { flex: 1; }
+
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: #131826;
+  border: 1px solid #2a3140;
+  border-radius: 8px;
+  padding: 22px;
+  min-width: 420px;
+  max-width: 560px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.modal h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: #e6e9f0; }
+.modal label {
+  display: block; font-size: 11px; color: #aab0c0;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+.modal .row { display: flex; gap: 10px; }
+.modal .row label { flex: 1; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.modal-actions button {
+  background: #1a2030; color: #c4cad8;
+  border: 1px solid #2a3140;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.modal-actions button:hover { background: #232a3a; }
+.modal-actions button.primary {
+  background: #e8c547; color: #1a1f2e; border-color: #e8c547; font-weight: 600;
+}
+.modal-actions button.primary:hover { background: #f0d370; border-color: #f0d370; }
+.modal-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+.modal-onboarding { min-width: 360px; text-align: center; padding: 28px; }
+.onboarding-mark { color: #e8c547; font-size: 32px; margin-bottom: 8px; line-height: 1; }
+.modal-onboarding h2 { font-size: 18px; margin-bottom: 6px; }
+.modal-onboarding p { color: #aab0c0; font-size: 12px; margin: 0 0 18px; }
+
+.input {
+  width: 100%;
+  background: #0a0e1a;
+  border: 1px solid #2a3140;
+  color: #e6e9f0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 4px;
+  font-family: inherit;
+}
+.input:focus { outline: none; border-color: #5b8def; }
+select.input { appearance: auto; }
+textarea.input { resize: vertical; min-height: 60px; }
+.inline-btn { margin-top: 4px; width: 100%; }
+
+.error { color: #e85a5a; font-size: 11px; margin-top: 6px; }
+
+.palette { display: flex; gap: 6px; margin: 10px 0; }
+.swatch {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+.swatch:hover { transform: scale(1.08); }
+.swatch.selected { border-color: #fff; box-shadow: 0 0 0 2px #131826 inset; }
+
+.ctxmenu {
+  position: fixed; z-index: 200;
+  background: #131826;
+  border: 1px solid #2a3140;
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.ctxmenu button {
+  display: block; width: 100%; text-align: left;
+  background: transparent; color: #e6e9f0;
+  border: 0; padding: 6px 12px;
+  font-size: 12px; cursor: pointer;
+  font-family: inherit;
+  border-radius: 3px;
+}
+.ctxmenu button:hover { background: #2a3140; }
+
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%;
+  color: #6a7180;
+  padding: 32px;
+  gap: 12px;
+}
+.empty-mark { color: #2a3140; font-size: 64px; line-height: 1; margin-bottom: 4px; }
+.empty-state .title { font-size: 15px; color: #c4cad8; font-weight: 500; }
+.empty-state .hint { font-size: 12px; max-width: 360px; text-align: center; line-height: 1.7; color: #6a7180; }
+.empty-state button.primary { margin-top: 8px; }
+
+/* React Flow overrides */
+.react-flow__background { background-color: #0f1320; }
+.react-flow__controls { background: #131826; border: 1px solid #2a3140; border-radius: 4px; overflow: hidden; }
+.react-flow__controls-button { background: #131826; color: #aab0c0; border-bottom: 1px solid #2a3140; }
+.react-flow__controls-button:hover { background: #1a2030; color: #fff; }
+.react-flow__controls-button svg { fill: currentColor; }
+.react-flow__edge-path { stroke-linecap: round; }
+.react-flow__edge-text { font-size: 10px; }
+.react-flow__edge-textbg { fill: #0f1320; }
