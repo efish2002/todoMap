@@ -149,3 +149,17 @@ pub fn list_comments(
 pub fn delete_comment(st: State<'_, AppState>, id: i64) -> AppResult<()> {
     super::comments::delete(&st, id)
 }
+
+#[tauri::command]
+pub fn export_json(st: State<'_, AppState>) -> AppResult<String> {
+    super::export::export_json(&st)
+}
+
+#[tauri::command]
+pub fn import_json(
+    st: State<'_, AppState>,
+    json: String,
+    merge: bool,
+) -> AppResult<()> {
+    super::export::import_json(&st, &json, merge)
+}

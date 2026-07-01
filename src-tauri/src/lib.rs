@@ -34,6 +34,8 @@ pub fn run() {
             ipc::add_comment,
             ipc::list_comments,
             ipc::delete_comment,
+            ipc::export_json,
+            ipc::import_json,
         ])
         .run(tauri::generate_context!())
         .expect("error while running todoMap");
