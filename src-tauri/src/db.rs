@@ -28,6 +28,19 @@ pub fn open_memory() -> AppResult<Connection> {
     Ok(conn)
 }
 
+
+fn add_column_if_missing(conn: &Connection, table: &str, column: &str, decl: &str) -> AppResult<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let name: String = row.get(1)?;
+        if name == column { return Ok(()); }
+    }
+    let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, decl);
+    conn.execute(&sql, [])?;
+    Ok(())
+}
+
 fn migrate(conn: &Connection) -> AppResult<()> {
     conn.execute_batch(
         r#"
@@ -36,6 +49,8 @@ fn migrate(conn: &Connection) -> AppResult<()> {
             name          TEXT NOT NULL,
             avatar_path   TEXT,
             is_me         INTEGER NOT NULL DEFAULT 0,
+            organization  TEXT,
+            contact       TEXT,
             created_at    TEXT NOT NULL
         );
 
@@ -75,5 +90,7 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         CREATE INDEX IF NOT EXISTS idx_todos_proj ON todos(project_id);
         "#,
     )?;
+    add_column_if_missing(conn, "people", "organization", "TEXT")?;
+    add_column_if_missing(conn, "people", "contact", "TEXT")?;
     Ok(())
 }

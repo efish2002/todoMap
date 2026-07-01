@@ -22,6 +22,7 @@ pub fn run() {
             ipc::set_my_avatar,
             ipc::list_people,
             ipc::upsert_person,
+            ipc::update_person,
             ipc::list_projects,
             ipc::create_project,
             ipc::update_project,

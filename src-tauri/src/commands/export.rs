@@ -17,17 +17,19 @@ struct ExportRoot {
 pub fn export_json(st: &AppState) -> AppResult<String> {
     let conn = st.conn.lock().unwrap();
     let people = {
-        let mut s = conn.prepare("SELECT id, name, avatar_path, is_me, created_at FROM people")?;
+        let mut s = conn.prepare("SELECT id, name, avatar_path, organization, contact, is_me, created_at FROM people")?;
         let rows = s.query_map([], |r| Ok((
             r.get::<_, i64>(0)?,
             r.get::<_, String>(1)?,
             r.get::<_, Option<String>>(2)?,
-            r.get::<_, i64>(3)? != 0,
-            r.get::<_, String>(4)?,
+            r.get::<_, Option<String>>(3)?,
+            r.get::<_, Option<String>>(4)?,
+            r.get::<_, i64>(5)? != 0,
+            r.get::<_, String>(6)?,
         )))?;
         rows.filter_map(|x| x.ok())
-            .map(|(id, name, avatar_path, is_me, created_at)| crate::models::Person {
-                id, name, avatar_path, is_me, created_at,
+            .map(|(id, name, avatar_path, organization, contact, is_me, created_at)| crate::models::Person {
+                id, name, avatar_path, organization, contact, is_me, created_at,
             })
             .collect::<Vec<_>>()
     };
@@ -102,8 +104,8 @@ pub fn import_json(st: &AppState, json: &str, merge: bool) -> AppResult<()> {
 
     for p in &root.people {
         tx.execute(
-            "INSERT OR REPLACE INTO people (id, name, avatar_path, is_me, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![p.id, p.name, p.avatar_path, p.is_me as i64, p.created_at],
+            "INSERT OR REPLACE INTO people (id, name, avatar_path, organization, contact, is_me, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![p.id, p.name, p.avatar_path, p.organization, p.contact, p.is_me as i64, p.created_at],
         )?;
     }
     for p in &root.projects {

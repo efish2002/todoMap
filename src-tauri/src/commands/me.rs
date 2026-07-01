@@ -12,14 +12,16 @@ pub fn get_or_create_me(
     let now = now_iso();
 
     if let Ok(p) = conn.query_row(
-        "SELECT id, name, avatar_path, is_me, created_at FROM people WHERE is_me = 1",
+        "SELECT id, name, avatar_path, organization, contact, is_me, created_at FROM people WHERE is_me = 1",
         [],
         |r| Ok(Person {
             id: r.get(0)?,
             name: r.get(1)?,
             avatar_path: r.get(2)?,
-            is_me: r.get::<_, i64>(3)? != 0,
-            created_at: r.get(4)?,
+            organization: r.get(3)?,
+            contact: r.get(4)?,
+            is_me: r.get::<_, i64>(5)? != 0,
+            created_at: r.get(6)?,
         }),
     ) {
         return Ok(p);
@@ -34,7 +36,7 @@ pub fn get_or_create_me(
         params![name, avatar_path, now],
     )?;
     let id = conn.last_insert_rowid();
-    Ok(Person { id, name, avatar_path, is_me: true, created_at: now })
+    Ok(Person { id, name, avatar_path, organization: None, contact: None, is_me: true, created_at: now })
 }
 
 pub fn set_my_avatar(st: &AppState, avatar_path: Option<String>) -> AppResult<()> {

@@ -35,6 +35,18 @@ pub fn upsert_person(
 }
 
 #[tauri::command]
+pub fn update_person(
+    st: State<'_, AppState>,
+    id: i64,
+    name: Option<String>,
+    avatar_path: Option<Option<String>>,
+    organization: Option<Option<String>>,
+    contact: Option<Option<String>>,
+) -> AppResult<Person> {
+    super::people::update(&st, id, name, avatar_path, organization, contact)
+}
+
+#[tauri::command]
 pub fn list_projects(
     st: State<'_, AppState>,
     include_archived: bool,

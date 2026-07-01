@@ -67,9 +67,6 @@ pub fn create(
     if title.trim().is_empty() {
         return Err(AppError::Invalid("title required".into()));
     }
-    if from_person_id == to_person_id {
-        return Err(AppError::Invalid("cannot delegate to self".into()));
-    }
     let conn = st.conn.lock().unwrap();
     let now = super::me::now_iso();
     conn.execute(
@@ -95,9 +92,6 @@ pub fn update(
     from_person_id: Option<i64>,
     to_person_id: Option<i64>,
 ) -> AppResult<Todo> {
-    if let (Some(f), Some(t)) = (from_person_id, to_person_id) {
-        if f == t { return Err(AppError::Invalid("cannot delegate to self".into())); }
-    }
     if let Some(s) = &status {
         if !VALID_STATUSES.contains(&s.as_str()) {
             return Err(AppError::Invalid(format!("invalid status: {}", s)));
@@ -179,9 +173,11 @@ mod tests {
     }
 
     #[test]
-    fn cannot_self_delegate() {
+    fn can_self_delegate() {
         let (st, _other_id, proj_id) = setup();
-        let err = create(&st, "x".into(), None, 0, None, None, proj_id, 1, 1);
-        assert!(err.is_err());
+        // Person 1 is "me" (created in setup via get_or_create_me).
+        let t = create(&st, "self".into(), None, 0, None, None, proj_id, 1, 1).unwrap();
+        assert_eq!(t.from_person_id, 1);
+        assert_eq!(t.to_person_id, 1);
     }
 }
