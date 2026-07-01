@@ -134,19 +134,11 @@ pub fn delete(st: &AppState, id: i64) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::path::PathBuf;
 
-    fn make_test_path(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join("todomap-tests");
-        let _ = fs::create_dir_all(&dir);
-        dir.join(format!("{}-{}.sqlite", name, std::process::id()))
-    }
-
+    /// Each test gets its own in-memory DB. Independent connections, no file
+    /// locks, no cross-test interference.
     fn setup() -> (AppState, i64, i64) {
-        let path = make_test_path("todos-unit");
-        let _ = fs::remove_file(&path);
-        let st = AppState::open_test(&path).unwrap();
+        let st = AppState::open_memory().unwrap();
         let _me = crate::commands::me::get_or_create_me(&st, "M".into(), None).unwrap();
         let other = crate::commands::people::upsert(&st, "O".into(), None).unwrap();
         let proj = crate::commands::projects::create(&st, "P".into(), "#3aa856".into()).unwrap();
@@ -164,7 +156,6 @@ mod tests {
         assert_eq!(t.to_person_id, other_id);
         let fetched = get(&st, t.id).unwrap();
         assert_eq!(fetched.id, t.id);
-        let _ = fs::remove_file(&make_test_path("todos-unit"));
     }
 
     #[test]
@@ -174,7 +165,6 @@ mod tests {
         let t2 = set_status(&st, t.id, "done".into()).unwrap();
         assert_eq!(t2.status, "done");
         assert_eq!(t2.id, t.id);
-        let _ = fs::remove_file(&make_test_path("todos-unit"));
     }
 
     #[test]
@@ -186,7 +176,6 @@ mod tests {
         let to_other = list_for_person(&st, other_id).unwrap();
         assert_eq!(from_me.len(), 2);
         assert_eq!(to_other.len(), 2);
-        let _ = fs::remove_file(&make_test_path("todos-unit"));
     }
 
     #[test]
@@ -194,6 +183,5 @@ mod tests {
         let (st, _other_id, proj_id) = setup();
         let err = create(&st, "x".into(), None, 0, None, None, proj_id, 1, 1);
         assert!(err.is_err());
-        let _ = fs::remove_file(&make_test_path("todos-unit"));
     }
 }
