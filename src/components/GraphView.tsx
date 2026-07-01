@@ -1,9 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
-import ReactFlow, { Background, Controls, MarkerType, type Edge, type Node } from "reactflow";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
+import {
+  Background,
+  Controls,
+  Handle,
+  Position,
+  ReactFlow,
+  type Edge,
+  type EdgeMouseHandler,
+  type Node,
+  type NodeMouseHandler,
+  type NodeProps,
+} from "reactflow";
 import "reactflow/dist/style.css";
-import { layoutGraph, type Point } from "../graph/layout";
+import { layoutGraph } from "../graph/layout";
 import { buildEdges } from "../graph/edges";
-import type { Person, Project, Todo } from "../types";
+import type { Person, Project, Todo, TodoStatus } from "../types";
 
 interface Props {
   me: Person;
@@ -16,11 +27,113 @@ interface Props {
   onEditPerson: (personId: number) => void;
 }
 
+interface NodeData {
+  label: string;
+  isMe: boolean;
+  color: string;
+  selected: boolean;
+  hovered: boolean;
+  dimmed: boolean;
+  pending: number;
+  inProgress: number;
+  done: number;
+  blocked: number;
+  selfCount: number;
+  index: number;
+}
+
+const handleStyle: CSSProperties = { background: "transparent", border: 0, opacity: 0, width: 1, height: 1 };
+
+const STATUS_STROKE: Record<TodoStatus, string> = {
+  pending: "#007AFF",
+  in_progress: "#FF9500",
+  done: "#34C759",
+  blocked: "#FF3B30",
+};
+
+function PersonNode({ data }: NodeProps<NodeData>) {
+  const { label, isMe, color, selected, hovered, dimmed, pending, inProgress, done, blocked, selfCount, index } = data;
+  const cls =
+    "tnode" +
+    (selected ? " selected" : "") +
+    (hovered ? " hovered" : "") +
+    (isMe ? " ring-pulse" : "") +
+    (dimmed ? " dimmed" : "");
+  const badgeCls = isMe ? "avatar avatar-me" : "avatar avatar-color-" + (index % 8);
+  const total = pending + inProgress + done + blocked;
+  const overflow = pending + inProgress + blocked;
+  return (
+    <div className={cls} style={{ borderColor: selected ? "var(--accent)" : "var(--hairline)" }}>
+      <Handle type="target" position={Position.Top}    style={handleStyle} />
+      <Handle type="target" position={Position.Bottom} style={handleStyle} />
+      <Handle type="target" position={Position.Left}   style={handleStyle} />
+      <Handle type="source" position={Position.Right}  style={handleStyle} />
+      <Handle type="source" position={Position.Top}    style={handleStyle} />
+      <Handle type="source" position={Position.Bottom} style={handleStyle} />
+      <div className={badgeCls} style={isMe ? undefined : { background: color }}>{label.slice(0, 1).toUpperCase()}</div>
+      <div className="label">{label}{isMe ? <span className="me-tag">ME</span> : null}</div>
+      {total > 0 ? (
+        <div className="count-pill" aria-label={"¥˝∞Ï " + total}>
+          {overflow > 0 ? overflow : <span className="all-done" title="»´≤øÕÍ≥…">{"\u2713"}</span>}
+        </div>
+      ) : null}
+      {selfCount > 0 ? (
+        <div className="self-pill" title={"◊‘—≠ª∑ " + selfCount}>
+          <span className="self-glyph" aria-hidden>{"\u21BB"}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const nodeTypes = { person: PersonNode };
+
+interface EdgeData {
+  todo_id: number;
+  status: TodoStatus;
+  hovered: boolean;
+  dimmed: boolean;
+  curve: number; // signed curvature
+}
+
+function edgeStyle(data: EdgeData | undefined): CSSProperties {
+  const status = data?.status ?? "pending";
+  const stroke = STATUS_STROKE[status];
+  const hovered = !!data?.hovered;
+  const dimmed = !!data?.dimmed;
+  // Only blocked uses dotted; done uses very faded, all others solid.
+  const dash =
+    status === "blocked" ? "2 5" :
+    status === "done"    ? "1 6" :
+    undefined;
+  return {
+    stroke,
+    strokeWidth: hovered ? 2.4 : 1.4,
+    strokeDasharray: dash,
+    opacity: dimmed ? 0.15 : hovered ? 1 : 0.6,
+    transition: "opacity 220ms ease, stroke-width 220ms ease",
+  };
+}
+
+/** Curvature by source/target angle, so the arc bows away from "me".
+ *  - edges that don't touch "me" bow clockwise
+ *  - edges that touch "me" bow outward (positive curvature) */
+function curvatureFor(meId: number, source: number, target: number, edgeCount: number, edgeIndex: number): number {
+  const isMeEdge = source === meId || target === meId;
+  if (isMeEdge) {
+    // bow outward: 0.35 with small offset for siblings
+    const offset = edgeCount > 1 ? (edgeIndex - (edgeCount - 1) / 2) * 0.08 : 0;
+    return 0.35 + offset;
+  }
+  // non-me edges get a small CCW bow
+  return 0.2;
+}
+
 export function GraphView(props: Props) {
   const { me, people, projects, todos, selectedId, onSelectNode, onSelectEdge, onEditPerson } = props;
-  const [menu, setMenu] = useState<{ kind: "node" | "edge"; x: number; y: number; id: number } | null>(null);
-  // User-dragged positions override the auto layout. Persists for the session.
-  const [userPositions, setUserPositions] = useState<Map<number, Point>>(new Map());
+  const [hoverPersonId, setHoverPersonId] = useState<number | null>(null);
+  const [hoverEdgeId, setHoverEdgeId] = useState<number | null>(null);
+  const [userPositions] = useState<Map<number, { x: number; y: number }>>(new Map());
 
   const autoPositions = useMemo(
     () =>
@@ -32,9 +145,8 @@ export function GraphView(props: Props) {
     [me.id, people, todos],
   );
 
-  // For each person, prefer the user-dragged position if it exists, otherwise the auto layout.
   const positions = useMemo(() => {
-    const merged = new Map<number, Point>();
+    const merged = new Map<number, { x: number; y: number }>();
     for (const p of people) {
       merged.set(p.id, userPositions.get(p.id) ?? autoPositions.get(p.id) ?? { x: 0, y: 0 });
     }
@@ -58,121 +170,133 @@ export function GraphView(props: Props) {
     return m;
   }, [people, projects, todos]);
 
-  const nodes: Node[] = useMemo(
+  const counts = useMemo(() => {
+    const m = new Map<number, { pending: number; inProgress: number; done: number; blocked: number; selfCount: number }>();
+    for (const p of people) m.set(p.id, { pending: 0, inProgress: 0, done: 0, blocked: 0, selfCount: 0 });
+    for (const t of todos) {
+      const a = m.get(t.from_person_id);
+      if (!a) continue;
+      if (t.from_person_id === t.to_person_id) { a.selfCount++; continue; }
+      if (t.status === "in_progress") a.inProgress++;
+      else if (t.status === "pending") a.pending++;
+      else if (t.status === "done") a.done++;
+      else if (t.status === "blocked") a.blocked++;
+    }
+    return m;
+  }, [people, todos]);
+
+  const focusedPersonId = hoverPersonId ?? selectedId;
+
+  const nodeWidth = useCallback((p: Person, isMe: boolean) => {
+    return Math.max(110, Math.round(p.name.length * 8.4 + 28 + (isMe ? 18 : 0)) + (isMe ? 0 : 22));
+  }, []);
+
+  const nodes: Node<NodeData>[] = useMemo(
     () =>
-      people.map((p) => {
+      people.map((p, i) => {
         const pos = positions.get(p.id) ?? { x: 0, y: 0 };
-        const color = colorByPerson.get(p.id) ?? "#5a5f70";
+        const color = colorByPerson.get(p.id) ?? "#8E8E93";
+        const c = counts.get(p.id) ?? { pending: 0, inProgress: 0, done: 0, blocked: 0, selfCount: 0 };
         const selected = selectedId === p.id;
+        const hovered = hoverPersonId === p.id;
+        const dimmed = focusedPersonId != null && focusedPersonId !== p.id;
+        const w = nodeWidth(p, p.is_me);
         return {
           id: String(p.id),
-          position: pos,
-          data: { label: p.name, isMe: p.is_me, color },
-          draggable: !p.is_me, // "me" stays pinned at the center
-          style: {
-            background: p.is_me ? "#e8c547" : "#1f2330",
-            color: p.is_me ? "#1a1f2e" : "#e6e9f0",
-            border: selected ? "3px solid #e8c547" : (p.is_me ? "2px solid #e8c547" : "2px solid " + color),
-            boxShadow: selected ? "0 0 0 4px rgba(232,197,71,0.18)" : "none",
-            borderRadius: "50%",
-            width: 60,
-            height: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 12,
-            fontWeight: p.is_me ? 700 : 500,
-            cursor: p.is_me ? "default" : "grab",
-          },
+          type: "person",
+          position: { x: pos.x - w / 2, y: pos.y - 20 },
+          data: { label: p.name, isMe: p.is_me, color, selected, hovered, dimmed, ...c, index: i },
         };
       }),
-    [people, positions, colorByPerson, selectedId],
+    [people, positions, colorByPerson, counts, selectedId, hoverPersonId, focusedPersonId, nodeWidth],
   );
 
-  const edges: Edge[] = useMemo(() => {
+  const edges: Edge<EdgeData>[] = useMemo(() => {
     const built = buildEdges(todos, projects);
-    return built.map((e) => {
-      const offset = e.arcCount > 1 ? (e.arcIndex - (e.arcCount - 1) / 2) * 30 : 0;
-      const t = todos.find((x) => x.id === e.todo_id);
-      return {
-        id: String(e.id),
-        source: String(e.source),
-        target: String(e.target),
-        type: "default",
-        animated: e.status === "in_progress",
-        label: t?.title,
-        style: {
-          stroke: e.color,
-          strokeWidth: 1,
-          strokeDasharray: e.dashed ? "4 4" : undefined,
-          opacity: e.dashed ? 0.4 : 0.85,
-        },
-        pathOptions: { curvature: offset / 200 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: e.color },
-        data: { todo_id: e.todo_id },
-        labelStyle: { fontSize: 10, fill: "#aab0c0" },
-        labelBgStyle: { fill: "#0f1320" },
-        labelBgPadding: [4, 2] as [number, number],
-        labelBgBorderRadius: 3,
-      };
-    });
-  }, [todos, projects]);
-
-  // When the user finishes dragging a node, remember where they put it so the
-  // auto-layout doesn't snap it back. Skip "me" (it's pinned).
-  const onNodeDragStop = useCallback(
-    (_e: React.MouseEvent, node: Node) => {
-      const id = Number(node.id);
-      if (!Number.isFinite(id)) return;
-      const meId = me.id;
-      if (id === meId) return;
-      setUserPositions((prev) => {
-        const next = new Map(prev);
-        next.set(id, { x: node.position.x, y: node.position.y });
-        return next;
+    // Group edges by (source,target) to give each a curve offset
+    const groups = new Map<string, number>();
+    for (const e of built) {
+      const k = e.source < e.target ? e.source + "-" + e.target : e.target + "-" + e.source;
+      groups.set(k, (groups.get(k) ?? 0) + 1);
+    }
+    const seen = new Map<string, number>();
+    return built
+      .filter((e) => e.source !== e.target) // “˛≤ÿ◊‘—≠ª∑
+      .map((e) => {
+        const k = e.source < e.target ? e.source + "-" + e.target : e.target + "-" + e.source;
+        const idx = seen.get(k) ?? 0;
+        seen.set(k, idx + 1);
+        const dimmed = focusedPersonId != null && e.source !== focusedPersonId && e.target !== focusedPersonId;
+        const hovered = hoverEdgeId === e.todo_id;
+        return {
+          id: String(e.id),
+          source: String(e.source),
+          target: String(e.target),
+          type: "default",
+          data: {
+            todo_id: e.todo_id,
+            status: e.status,
+            hovered,
+            dimmed,
+            curve: curvatureFor(me.id, e.source, e.target, groups.get(k) ?? 1, idx),
+          },
+          style: edgeStyle({ todo_id: e.todo_id, status: e.status, hovered, dimmed, curve: 0 }),
+          markerEnd: undefined,
+          animated: e.status === "in_progress" && !dimmed,
+          pathOptions: { curvature: 0 },
+        };
       });
-    },
-    [me.id],
+  }, [todos, projects, focusedPersonId, hoverEdgeId, positions, me.id]);
+
+  // Apply curvature to edges via style override at render time. ReactFlow's
+  // default edge type uses `pathOptions.curvature` so we set it on each edge.
+  const edgesWithCurve = useMemo(
+    () => edges.map((e) => ({ ...e, pathOptions: { curvature: e.data?.curve ?? 0.3 } })),
+    [edges],
   );
 
-  const resetLayout = useCallback(() => setUserPositions(new Map()), []);
+  const onNodeClick: NodeMouseHandler = useCallback((_, n) => {
+    setHoverEdgeId(null);
+    onSelectNode(Number(n.id));
+  }, [onSelectNode]);
+
+  const onEdgeClick: EdgeMouseHandler = useCallback((_, e) => {
+    setHoverEdgeId(null);
+    onSelectEdge(Number(e.id));
+  }, [onSelectEdge]);
+
+  const onNodeMouseEnter: NodeMouseHandler = useCallback((_, n) => setHoverPersonId(Number(n.id)), []);
+  const onNodeMouseLeave: NodeMouseHandler = useCallback(() => setHoverPersonId(null), []);
+  const onEdgeMouseEnter: EdgeMouseHandler = useCallback((_, e) => setHoverEdgeId(Number(e.id)), []);
+  const onEdgeMouseLeave: EdgeMouseHandler = useCallback(() => setHoverEdgeId(null), []);
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edgesWithCurve}
+        nodeTypes={nodeTypes}
         fitView
-        nodesDraggable
+        fitViewOptions={{ padding: 0.30 }}
+        minZoom={0.4}
+        maxZoom={1.4}
+        nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable
-        onNodeDragStop={onNodeDragStop}
-        onNodeClick={(_, n) => { setMenu(null); onSelectNode(Number(n.id)); }}
-        onNodeDoubleClick={(_, n) => { setMenu(null); onEditPerson(Number(n.id)); }}
-        onEdgeClick={(_, e) => { setMenu(null); onSelectEdge(Number(e.id)); }}
-        onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ kind: "node", x: e.clientX, y: e.clientY, id: Number(n.id) }); }}
-        onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ kind: "edge", x: e.clientX, y: e.clientY, id: Number(ed.id) }); }}
-        onPaneClick={() => { setMenu(null); onSelectNode(null); }}
+        defaultEdgeOptions={{ type: "default" }}
+        onNodeClick={onNodeClick}
+        onNodeDoubleClick={(_, n) => onEditPerson(Number(n.id))}
+        onEdgeClick={onEdgeClick}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onEdgeMouseLeave}
+        onPaneClick={() => { onSelectNode(null); setHoverPersonId(null); setHoverEdgeId(null); }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#222a3a" gap={24} size={1} />
+        <Background color="#E5E5EA" gap={32} size={1} />
         <Controls />
       </ReactFlow>
-      <button
-        className="layout-reset"
-        onClick={resetLayout}
-        title="ÈáçÁΩÆËá™Âä®Â∏ÉÂ±Ä"
-      >‚Ü∫ ÈáçÁΩÆÂ∏ÉÂ±Ä</button>
-      {menu && (
-        <div className="ctxmenu" style={{ left: menu.x, top: menu.y }} onClick={(e) => e.stopPropagation()}>
-          {menu.kind === "node" && (
-            <button onClick={() => { onSelectNode(menu.id); setMenu(null); }}>Êü•ÁúãËØ¶ÊÉÖ</button>
-          )}
-          {menu.kind === "edge" && (
-            <button onClick={() => { onSelectEdge(menu.id); setMenu(null); }}>ÊâìÂºÄ todo</button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

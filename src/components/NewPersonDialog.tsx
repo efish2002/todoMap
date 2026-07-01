@@ -23,10 +23,10 @@ export function NewPersonDialog({ initialName, onClose, onCreated }: Props) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <h2>新建协作人</h2>
-        <label>名字<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
+        <label>姓名<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus onKeyDown={(e) => e.key === "Enter" && submit()} /></label>
         {err && <div className="error">{err}</div>}
         <div className="modal-actions">
           <button onClick={onClose}>取消</button>

@@ -8,11 +8,11 @@ interface Props {
 export function EmptyState({ title, hint, onAction, actionLabel }: Props) {
   return (
     <div className="empty-state">
-      <div className="empty-mark">◌</div>
+      <div className="empty-mark" aria-hidden>◇</div>
       <div className="title">{title}</div>
       {hint && <div className="hint">{hint}</div>}
       {onAction && actionLabel && (
-        <button className="primary" onClick={onAction}>{actionLabel}</button>
+        <button className="btn-primary" onClick={onAction}>{actionLabel}</button>
       )}
     </div>
   );

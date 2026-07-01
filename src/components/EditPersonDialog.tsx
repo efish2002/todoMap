@@ -35,7 +35,7 @@ export function EditPersonDialog({ person, onClose, onSaved }: Props) {
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <h2>编辑人员信息</h2>
-        <label>名字<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
+        <label>姓名<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
         <label>单位<input className="input" value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="公司 / 团队 / 学校" /></label>
         <label>联系方式<input className="input" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="微信 / 邮箱 / 电话" /></label>
         {err && <div className="error">{err}</div>}

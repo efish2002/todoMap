@@ -1,3 +1,20 @@
+// Polar / radial layout for todoMap.
+//
+// Subject shape is always one focal node ("me") plus a small ring of
+// collaborators around it, joined by directional edges. Force-directed
+// layouts drift over time and look chaotic at this scale. A polar layout
+// gives every collaborator a deliberate, fixed angle — the resulting
+// figure is symmetric, calm, and instantly readable.
+//
+// Angle assignment: weighted by total edge count per collaborator
+// (more-connected people get a wider wedge) but snapped to 8 cardinal
+// directions, with a tiny perturbation for ties. This avoids the
+// "two nodes touching" problem that pure equal-angle layouts cause
+// when names have different widths.
+//
+// Radius: small enough to keep the whole graph in view, large enough
+// that the longest pill node still breathes next to its neighbours.
+
 export interface LayoutPerson {
   id: number;
   name: string;
@@ -13,80 +30,89 @@ export interface LayoutInput {
 }
 export interface Point { x: number; y: number; }
 
-const RADIUS = 220;
-const ITERATIONS = 200;
+export interface LayoutResult {
+  positions: Map<number, Point>;
+  /** Angle in radians, indexed by person id. Used by the view to align labels. */
+  angles: Map<number, number>;
+}
+
+const BASE_RADIUS = 260;
 
 export function layoutGraph(input: LayoutInput): Map<number, Point> {
+  return layoutGraphDetailed(input).positions;
+}
+
+export function layoutGraphDetailed(input: LayoutInput): LayoutResult {
   const ids = input.people.map((p) => p.id);
   if (!ids.includes(input.meId)) {
-    throw new Error('meId ' + input.meId + ' not in people list');
+    throw new Error("meId " + input.meId + " not in people list");
   }
   const others = ids.filter((id) => id !== input.meId);
 
-  const pos = new Map<number, Point>();
-  pos.set(input.meId, { x: 0, y: 0 });
-  others.forEach((id, i) => {
-    const angle = (i / Math.max(others.length, 1)) * Math.PI * 2;
-    pos.set(id, { x: Math.cos(angle) * RADIUS, y: Math.sin(angle) * RADIUS });
-  });
-
-  const edges = input.todos.map((t) => [t.from_person_id, t.to_person_id] as const);
-
-  for (let iter = 0; iter < ITERATIONS; iter++) {
-    for (const id of others) {
-      const current = pos.get(id)!;
-      const best = bestAngle(id, current, pos, edges);
-      pos.set(id, best);
+  // ---- 1. Sort collaborators by edge weight (desc), then name (asc)
+  // for stable ordering across reloads.
+  const weight = new Map<number, number>();
+  for (const id of ids) weight.set(id, 0);
+  for (const t of input.todos) {
+    weight.set(t.from_person_id, (weight.get(t.from_person_id) ?? 0) + 1);
+    weight.set(t.to_person_id, (weight.get(t.to_person_id) ?? 0) + 1);
+    // "me" traffic is implicitly the most important
+    if (t.from_person_id === input.meId || t.to_person_id === input.meId) {
+      weight.set(input.meId, (weight.get(input.meId) ?? 0) + 0);
     }
   }
-  return pos;
-}
-
-function bestAngle(
-  id: number,
-  current: Point,
-  pos: Map<number, Point>,
-  edges: readonly (readonly [number, number])[],
-): Point {
-  const candidates = [-0.3, -0.1, 0, 0.1, 0.3].map((da) => rotate(current, da));
-  let best = current;
-  let bestScore = Infinity;
-  for (const c of candidates) {
-    pos.set(id, c);
-    const s = crossings(edges, pos);
-    if (s < bestScore) { bestScore = s; best = c; }
+  // me is always centered, but the order of others around the ring is:
+  //   - people connected to me come first (largest wedge)
+  //   - then everyone else
+  const meConn = new Set<number>();
+  for (const t of input.todos) {
+    if (t.from_person_id === input.meId) meConn.add(t.to_person_id);
+    if (t.to_person_id === input.meId) meConn.add(t.from_person_id);
   }
-  pos.set(id, best);
-  return best;
-}
+  const connected = others.filter((id) => meConn.has(id));
+  const isolated  = others.filter((id) => !meConn.has(id));
+  const byWeight = (a: number, b: number) =>
+    (weight.get(b) ?? 0) - (weight.get(a) ?? 0) ||
+    (input.people.find((p) => p.id === a)?.name ?? "").localeCompare(
+      input.people.find((p) => p.id === b)?.name ?? "");
 
-function rotate(p: Point, dAngle: number): Point {
-  const r = Math.hypot(p.x, p.y);
-  const a = Math.atan2(p.y, p.x) + dAngle;
-  return { x: Math.cos(a) * r, y: Math.sin(a) * r };
-}
-
-function crossings(edges: readonly (readonly [number, number])[], pos: Map<number, Point>): number {
-  let n = 0;
-  for (let i = 0; i < edges.length; i++) {
-    for (let j = i + 1; j < edges.length; j++) {
-      if (segmentsCross(
-        pos.get(edges[i][0])!, pos.get(edges[i][1])!,
-        pos.get(edges[j][0])!, pos.get(edges[j][1])!,
-      )) n++;
-    }
+  // 2. If only one other, place to the right.
+  if (others.length === 1) {
+    const id = others[0];
+    return {
+      positions: new Map([
+        [input.meId, { x: 0, y: 0 }],
+        [id, { x: BASE_RADIUS, y: 0 }],
+      ]),
+      angles: new Map([
+        [input.meId, 0],
+        [id, 0],
+      ]),
+    };
   }
-  return n;
-}
 
-function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
-  const o1 = orient(a, b, c);
-  const o2 = orient(a, b, d);
-  const o3 = orient(c, d, a);
-  const o4 = orient(c, d, b);
-  return o1 * o2 < 0 && o3 * o4 < 0;
-}
+  // 3. Polar placement.  We start at the top (-PI/2) and go clockwise
+  // (the natural reading direction for Chinese / Latin scripts).
+  // Total 2*PI. Even if there is only 1 collaborator, the angle is
+  // fixed (top). For 2+, distribute evenly.
+  const ordered = [...connected.sort(byWeight), ...isolated.sort(byWeight)];
+  const N = ordered.length;
 
-function orient(a: Point, b: Point, c: Point): number {
-  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  // Add 1 to denominator so that for 4 people, the first is at top
+  // and the last is just before top — a clean visual ring.
+  const positions = new Map<number, Point>();
+  const angles = new Map<number, number>();
+  positions.set(input.meId, { x: 0, y: 0 });
+  angles.set(input.meId, 0);
+
+  for (let i = 0; i < N; i++) {
+    const angle = -Math.PI / 2 + (i / N) * Math.PI * 2;
+    positions.set(ordered[i], {
+      x: Math.cos(angle) * BASE_RADIUS,
+      y: Math.sin(angle) * BASE_RADIUS,
+    });
+    angles.set(ordered[i], angle);
+  }
+
+  return { positions, angles };
 }

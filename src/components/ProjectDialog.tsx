@@ -3,12 +3,12 @@ import { api } from "../api";
 import type { Project } from "../types";
 
 interface Props {
-  editing?: Project | null;
+  editing: Project | null;
   onClose: () => void;
   onSaved: (p: Project) => void;
 }
 
-const PALETTE = ["#3aa856", "#d97b3a", "#5b8def", "#c45ec4", "#e8c547", "#5ad1ce", "#e85a5a"];
+const PALETTE = ["#007AFF", "#34C759", "#FF9500", "#FF3B30", "#AF52DE", "#5AC8FA", "#FF375F", "#FFD60A"];
 
 export function ProjectDialog({ editing, onClose, onSaved }: Props) {
   const [name, setName] = useState(editing?.name ?? "");
@@ -28,10 +28,10 @@ export function ProjectDialog({ editing, onClose, onSaved }: Props) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <h2>{editing ? "编辑项目" : "新建项目"}</h2>
-        <label>名称<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
+        <label>名称<input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus onKeyDown={(e) => e.key === "Enter" && submit()} /></label>
         <div className="palette">
           {PALETTE.map((c) => (
             <button

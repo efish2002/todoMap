@@ -9,3 +9,17 @@ tsconfig.tsbuildinfo
 *.tsbuildinfo
 target/
 src-tauri/gen/
+
+# local preview / screenshot artifacts
+preview.log
+preview.err
+preview.png
+tauri-dev.log
+tauri-dev.err
+shot.png
+shot-zoom.png
+shot-modal.png
+shot1.png
+
+# local dev helpers
+scripts/

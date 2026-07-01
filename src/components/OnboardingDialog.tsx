@@ -25,9 +25,9 @@ export function OnboardingDialog({ onCreated }: Props) {
   return (
     <div className="modal-backdrop">
       <div className="modal modal-onboarding">
-        <div className="onboarding-mark">●</div>
+        <div className="onboarding-mark" aria-hidden>T</div>
         <h2>欢迎使用 todoMap</h2>
-        <p>先告诉我你的名字,我们就开始了。</p>
+        <p>先告诉我你的名字，我们就开始了。</p>
         <input
           className="input"
           placeholder="你的名字"
@@ -37,8 +37,8 @@ export function OnboardingDialog({ onCreated }: Props) {
           autoFocus
         />
         {err && <div className="error">{err}</div>}
-        <div className="modal-actions">
-          <button className="primary" onClick={submit} disabled={busy || !name.trim()}>开始</button>
+        <div className="modal-actions" style={{ justifyContent: "center" }}>
+          <button className="btn-primary" style={{ padding: "8px 28px" }} onClick={submit} disabled={busy || !name.trim()}>开始</button>
         </div>
       </div>
     </div>
