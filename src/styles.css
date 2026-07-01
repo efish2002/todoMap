@@ -119,8 +119,11 @@ button.ghost:hover { color: #fff; border-color: #4a5260; }
   font-weight: 600;
 }
 .todo-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   background: #0f1320;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-radius: 4px;
   border-left: 3px solid #2a3140;
   margin-bottom: 4px;
@@ -129,13 +132,46 @@ button.ghost:hover { color: #fff; border-color: #4a5260; }
   border-left-width: 3px;
 }
 .todo-card:hover { background: #141a2a; }
+.todo-card .check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1px;
+  cursor: pointer;
+}
+.todo-card .check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3aa856;
+  cursor: pointer;
+  margin: 0;
+}
+.todo-card .todo-body { flex: 1 1 auto; min-width: 0; }
 .todo-card .title { font-size: 12px; color: #e6e9f0; line-height: 1.4; }
+.todo-card .title.done { text-decoration: line-through; color: #6a7180; }
 .todo-card .meta { font-size: 10px; color: #6a7180; margin-top: 3px; }
-.todo-card.status-done { border-left-color: #3aa856; opacity: 0.6; }
-.todo-card.status-done .title { text-decoration: line-through; }
+.todo-card.status-done { border-left-color: #3aa856; opacity: 0.7; }
 .todo-card.status-in_progress { border-left-color: #5b8def; }
 .todo-card.status-blocked { border-left-color: #e85a5a; }
 .todo-card.status-pending { border-left-color: #d97b3a; }
+
+.layout-reset {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  background: rgba(15, 19, 32, 0.85);
+  color: #c4cad8;
+  border: 1px solid #2a3140;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  backdrop-filter: blur(4px);
+}
+.layout-reset:hover { background: #1a1f2e; color: #fff; border-color: #4a5260; }
 .empty { color: #4a5260; font-size: 11px; padding: 4px 0; }
 
 .statusbar {

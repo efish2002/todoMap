@@ -103,6 +103,14 @@ export default function App() {
           todos={todos}
           people={people}
           onOpenTodo={(id) => { const t = todos.find((x) => x.id === id); if (t) setEditingTodo(t); }}
+          onToggleDone={async (id, done) => {
+            try {
+              await api.setTodoStatus(id, done ? "done" : "pending");
+              await refresh();
+            } catch (e) {
+              console.error("toggle done failed", e);
+            }
+          }}
         />
       </div>
 

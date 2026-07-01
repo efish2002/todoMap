@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import ReactFlow, { Background, Controls, MarkerType, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
-import { layoutGraph } from "../graph/layout";
+import { layoutGraph, type Point } from "../graph/layout";
 import { buildEdges } from "../graph/edges";
 import type { Person, Project, Todo } from "../types";
 
@@ -18,8 +18,10 @@ interface Props {
 export function GraphView(props: Props) {
   const { me, people, projects, todos, selectedId, onSelectNode, onSelectEdge } = props;
   const [menu, setMenu] = useState<{ kind: "node" | "edge"; x: number; y: number; id: number } | null>(null);
+  // User-dragged positions override the auto layout. Persists for the session.
+  const [userPositions, setUserPositions] = useState<Map<number, Point>>(new Map());
 
-  const positions = useMemo(
+  const autoPositions = useMemo(
     () =>
       layoutGraph({
         meId: me.id,
@@ -28,6 +30,15 @@ export function GraphView(props: Props) {
       }),
     [me.id, people, todos],
   );
+
+  // For each person, prefer the user-dragged position if it exists, otherwise the auto layout.
+  const positions = useMemo(() => {
+    const merged = new Map<number, Point>();
+    for (const p of people) {
+      merged.set(p.id, userPositions.get(p.id) ?? autoPositions.get(p.id) ?? { x: 0, y: 0 });
+    }
+    return merged;
+  }, [people, autoPositions, userPositions]);
 
   const colorByPerson = useMemo(() => {
     const m = new Map<number, string>();
@@ -56,6 +67,7 @@ export function GraphView(props: Props) {
           id: String(p.id),
           position: pos,
           data: { label: p.name, isMe: p.is_me, color },
+          draggable: !p.is_me, // "me" stays pinned at the center
           style: {
             background: p.is_me ? "#e8c547" : "#1f2330",
             color: p.is_me ? "#1a1f2e" : "#e6e9f0",
@@ -69,6 +81,7 @@ export function GraphView(props: Props) {
             justifyContent: "center",
             fontSize: 12,
             fontWeight: p.is_me ? 700 : 500,
+            cursor: p.is_me ? "default" : "grab",
           },
         };
       }),
@@ -104,12 +117,35 @@ export function GraphView(props: Props) {
     });
   }, [todos, projects]);
 
+  // When the user finishes dragging a node, remember where they put it so the
+  // auto-layout doesn't snap it back. Skip "me" (it's pinned).
+  const onNodeDragStop = useCallback(
+    (_e: React.MouseEvent, node: Node) => {
+      const id = Number(node.id);
+      if (!Number.isFinite(id)) return;
+      const meId = me.id;
+      if (id === meId) return;
+      setUserPositions((prev) => {
+        const next = new Map(prev);
+        next.set(id, { x: node.position.x, y: node.position.y });
+        return next;
+      });
+    },
+    [me.id],
+  );
+
+  const resetLayout = useCallback(() => setUserPositions(new Map()), []);
+
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         fitView
+        nodesDraggable
+        nodesConnectable={false}
+        elementsSelectable
+        onNodeDragStop={onNodeDragStop}
         onNodeClick={(_, n) => { setMenu(null); onSelectNode(Number(n.id)); }}
         onEdgeClick={(_, e) => { setMenu(null); onSelectEdge(Number(e.id)); }}
         onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ kind: "node", x: e.clientX, y: e.clientY, id: Number(n.id) }); }}
@@ -120,6 +156,11 @@ export function GraphView(props: Props) {
         <Background color="#222a3a" gap={24} size={1} />
         <Controls />
       </ReactFlow>
+      <button
+        className="layout-reset"
+        onClick={resetLayout}
+        title="重置自动布局"
+      >↺ 重置布局</button>
       {menu && (
         <div className="ctxmenu" style={{ left: menu.x, top: menu.y }} onClick={(e) => e.stopPropagation()}>
           {menu.kind === "node" && (
