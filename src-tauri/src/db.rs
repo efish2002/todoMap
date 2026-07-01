@@ -10,6 +10,24 @@ pub fn open(path: &Path) -> AppResult<Connection> {
     Ok(conn)
 }
 
+/// Test-only: file-based db with DELETE journal (no WAL), avoiding
+/// the Windows WAL cleanup hang. Caller is responsible for cleanup.
+pub fn open_test(path: &Path) -> AppResult<Connection> {
+    let conn = Connection::open(path)?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
+    conn.pragma_update(None, "journal_mode", "DELETE")?;
+    migrate(&conn)?;
+    Ok(conn)
+}
+
+/// In-memory DB for tests; avoids WAL file lock on Windows.
+pub fn open_memory() -> AppResult<Connection> {
+    let conn = Connection::open_in_memory()?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
+    migrate(&conn)?;
+    Ok(conn)
+}
+
 fn migrate(conn: &Connection) -> AppResult<()> {
     conn.execute_batch(
         r#"
