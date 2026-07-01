@@ -1,4 +1,4 @@
-﻿import type { Person, Todo } from "../types";
+import type { Person, Todo } from "../types";
 
 interface Props {
   me: Person;

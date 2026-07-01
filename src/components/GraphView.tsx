@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   Background,
   Controls,
@@ -40,6 +40,7 @@ interface NodeData {
   blocked: number;
   selfCount: number;
   index: number;
+  onEdit: (id: number) => void;
 }
 
 const handleStyle: CSSProperties = { background: "transparent", border: 0, opacity: 0, width: 1, height: 1 };
@@ -51,8 +52,8 @@ const STATUS_STROKE: Record<TodoStatus, string> = {
   blocked: "#FF3B30",
 };
 
-function PersonNode({ data }: NodeProps<NodeData>) {
-  const { label, isMe, color, selected, hovered, dimmed, pending, inProgress, done, blocked, selfCount, index } = data;
+function PersonNode({ data, id }: NodeProps<NodeData>) {
+  const { label, isMe, color, selected, hovered, dimmed, pending, inProgress, done, blocked, selfCount, index, onEdit } = data;
   const cls =
     "tnode" +
     (selected ? " selected" : "") +
@@ -62,8 +63,14 @@ function PersonNode({ data }: NodeProps<NodeData>) {
   const badgeCls = isMe ? "avatar avatar-me" : "avatar avatar-color-" + (index % 8);
   const total = pending + inProgress + done + blocked;
   const overflow = pending + inProgress + blocked;
+  const personId = Number(id);
   return (
-    <div className={cls} style={{ borderColor: selected ? "var(--accent)" : "var(--hairline)" }}>
+    <div
+      className={cls}
+      style={{ borderColor: selected ? "var(--accent)" : "var(--hairline)", cursor: "grab" }}
+      onDoubleClick={(e) => { e.stopPropagation(); onEdit(personId); }}
+      title={isMe ? "åŒå‡»ç¼–è¾‘æˆ‘çš„ä¿¡æ¯" : ("åŒå‡»ç¼–è¾‘ " + label + " çš„ä¿¡æ¯ Â· æ‹–åŠ¨è°ƒæ•´ä½ç½®")}
+    >
       <Handle type="target" position={Position.Top}    style={handleStyle} />
       <Handle type="target" position={Position.Bottom} style={handleStyle} />
       <Handle type="target" position={Position.Left}   style={handleStyle} />
@@ -73,12 +80,12 @@ function PersonNode({ data }: NodeProps<NodeData>) {
       <div className={badgeCls} style={isMe ? undefined : { background: color }}>{label.slice(0, 1).toUpperCase()}</div>
       <div className="label">{label}{isMe ? <span className="me-tag">ME</span> : null}</div>
       {total > 0 ? (
-        <div className="count-pill" aria-label={"´ý°ì " + total}>
-          {overflow > 0 ? overflow : <span className="all-done" title="È«²¿Íê³É">{"\u2713"}</span>}
+        <div className="count-pill" aria-label={"å¾…åŠž " + total}>
+          {overflow > 0 ? overflow : <span className="all-done" title="å…¨éƒ¨å®Œæˆ">{"\u2713"}</span>}
         </div>
       ) : null}
       {selfCount > 0 ? (
-        <div className="self-pill" title={"×ÔÑ­»· " + selfCount}>
+        <div className="self-pill" title={"è‡ªå¾ªçŽ¯ " + selfCount}>
           <span className="self-glyph" aria-hidden>{"\u21BB"}</span>
         </div>
       ) : null}
@@ -133,7 +140,35 @@ export function GraphView(props: Props) {
   const { me, people, projects, todos, selectedId, onSelectNode, onSelectEdge, onEditPerson } = props;
   const [hoverPersonId, setHoverPersonId] = useState<number | null>(null);
   const [hoverEdgeId, setHoverEdgeId] = useState<number | null>(null);
-  const [userPositions] = useState<Map<number, { x: number; y: number }>>(new Map());
+  const [userPositions, setUserPositions] = useState<Map<number, { x: number; y: number }>>(() => {
+    if (typeof window === "undefined") return new Map();
+    try {
+      const raw = window.localStorage.getItem("todomap.userPositions");
+      if (!raw) return new Map();
+      const obj = JSON.parse(raw) as Record<string, { x: number; y: number }>;
+      const m = new Map<number, { x: number; y: number }>();
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v.x === "number" && typeof v.y === "number") {
+          m.set(Number(k), v);
+        }
+      }
+      return m;
+    } catch {
+      return new Map();
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (userPositions.size === 0) {
+      window.localStorage.removeItem("todomap.userPositions");
+      return;
+    }
+    const obj: Record<string, { x: number; y: number }> = {};
+    for (const [k, v] of userPositions) obj[String(k)] = v;
+    window.localStorage.setItem("todomap.userPositions", JSON.stringify(obj));
+  }, [userPositions]);
 
   const autoPositions = useMemo(
     () =>
@@ -205,7 +240,7 @@ export function GraphView(props: Props) {
           id: String(p.id),
           type: "person",
           position: { x: pos.x - w / 2, y: pos.y - 20 },
-          data: { label: p.name, isMe: p.is_me, color, selected, hovered, dimmed, ...c, index: i },
+          data: { label: p.name, isMe: p.is_me, color, selected, hovered, dimmed, ...c, index: i, onEdit: onEditPerson },
         };
       }),
     [people, positions, colorByPerson, counts, selectedId, hoverPersonId, focusedPersonId, nodeWidth],
@@ -221,7 +256,7 @@ export function GraphView(props: Props) {
     }
     const seen = new Map<string, number>();
     return built
-      .filter((e) => e.source !== e.target) // Òþ²Ø×ÔÑ­»·
+      .filter((e) => e.source !== e.target) // éšè—è‡ªå¾ªçŽ¯
       .map((e) => {
         const k = e.source < e.target ? e.source + "-" + e.target : e.target + "-" + e.source;
         const idx = seen.get(k) ?? 0;
@@ -280,11 +315,21 @@ export function GraphView(props: Props) {
         fitViewOptions={{ padding: 0.30 }}
         minZoom={0.4}
         maxZoom={1.4}
-        nodesDraggable={false}
+        nodesDraggable
         nodesConnectable={false}
         elementsSelectable
         defaultEdgeOptions={{ type: "default" }}
         onNodeClick={onNodeClick}
+        onNodeDragStop={(_, n) => {
+          const person = people.find((p) => p.id === Number(n.id));
+          if (!person) return;
+          const w = nodeWidth(person, Number(n.id) === me.id);
+          setUserPositions((prev) => {
+            const next = new Map(prev);
+            next.set(Number(n.id), { x: n.position.x + w / 2, y: n.position.y + 20 });
+            return next;
+          });
+        }}
         onNodeDoubleClick={(_, n) => onEditPerson(Number(n.id))}
         onEdgeClick={onEdgeClick}
         onNodeMouseEnter={onNodeMouseEnter}

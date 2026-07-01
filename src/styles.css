@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    todoMap — Apple HIG inspired design system
    Single source of truth for color, type, spacing, radius, motion.
    ========================================================================== */
@@ -289,6 +289,15 @@ button.btn-ghost {
               color var(--dur-fast) var(--ease-out);
 }
 button.btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
+
+/* small dot used in the topbar "edit me" button */
+.me-dot {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+  vertical-align: 1px;
+}
 
 /* ----------------------------------------------------------------------------
    Body

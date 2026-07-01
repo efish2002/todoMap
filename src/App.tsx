@@ -94,6 +94,17 @@ export default function App() {
           />
         </div>
         <div className="topbar-actions">
+          <button className="btn-ghost" onClick={() => setShowNewProject(true)} title="新建项目">
+            + 新建项目
+          </button>
+          <button
+            className="btn-ghost"
+            onClick={() => setEditingPerson(me)}
+            title="编辑我的信息"
+            disabled={!me}
+          >
+            <span className="me-dot" aria-hidden /> 编辑我
+          </button>
           <button className="btn-primary" onClick={() => setShowNewTodo(true)} disabled={projects.length === 0}>
             + 新增请求
           </button>
