@@ -8,3 +8,4 @@ dist/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 target/
+src-tauri/gen/
